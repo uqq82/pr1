@@ -15,7 +15,7 @@ namespace CurrencyConverterApp
                 throw new ArgumentException("Сумма не может быть отрицательной.");
             }
 
-            if (fromCurrency == "USD" && toCurrency == "EUR")
+            else if (fromCurrency == "USD" && toCurrency == "EUR")
             {
                 return amount * usdToEur;
             }
@@ -23,14 +23,15 @@ namespace CurrencyConverterApp
             {
                 return amount * eurToUsd;
             }
-            else if (fromCurrency == toCurrency)
-            {
-                return amount;
-            }
-            else
+
+            else if ((fromCurrency != "EUR" || fromCurrency != "USD") || (toCurrency != "EUR" || toCurrency != "USD"))
             {
                 throw new NotSupportedException("Не поддерживаемая пара валют.");
             }
+            else { 
+            return 0;
+            }
+
         }
     }
 }

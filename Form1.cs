@@ -14,6 +14,7 @@ namespace WindowsFormsApp1
             InitializeComponent();
         }
 
+
         private void ConvertButton_Click(object sender, EventArgs e)
         {
             // Проверка: введена ли сумма
@@ -36,13 +37,7 @@ namespace WindowsFormsApp1
             string fromCurrency = fromCurrencyComboBox.SelectedItem?.ToString();
             string toCurrency = toCurrencyComboBox.SelectedItem?.ToString();
 
-            // Проверка: выбраны ли валюты
-            if (string.IsNullOrEmpty(fromCurrency) || string.IsNullOrEmpty(toCurrency))
-            {
-                MessageBox.Show("Выберите валюты для конвертации!", "Ошибка",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
+          
 
             // Попытка конвертации
             try
