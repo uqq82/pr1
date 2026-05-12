@@ -7,16 +7,74 @@ namespace WindowsFormsApp1
     public partial class Form1 : Form
     {
         private CurrencyConverter converter;
+        private CurrencyRateService rateService;
+        private Timer autoUpdateTimer;
 
         public Form1()
         {
-            converter = new CurrencyConverter();
+            rateService = new CurrencyRateService(TimeSpan.FromMinutes(10));
+            converter = new CurrencyConverter(rateService);
+
             InitializeComponent();
+            SetupEvents();
+
+            // Загрузка курсов при старте
+            LoadRatesAsync();
+        }
+
+        private void SetupEvents()
+        {
+            // Подписка на события сервиса
+            rateService.OnRateUpdated += (msg) =>
+                this.Invoke(new Action(() => {
+                    UpdateRatesDisplay();
+                    MessageBox.Show(msg, "Информация",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }));
+
+            rateService.OnError += (msg) =>
+                this.Invoke(new Action(() => {
+                    UpdateRatesDisplay();
+                    statusLabel.Text = "⚠ " + msg;
+                }));
+
+            // Таймер автообновления (каждые 10 минут)
+            autoUpdateTimer = new Timer { Interval = 60000 };
+            autoUpdateTimer.Tick += (s, e) => LoadRatesAsync();
+            autoUpdateTimer.Start();
+        }
+
+        private async void LoadRatesAsync()
+        {
+            try
+            {
+                await rateService.FetchRatesAsync("USD");
+                UpdateRatesDisplay();
+            }
+            catch { /* Ошибки обрабатываются в событиях сервиса */ }
+        }
+
+        private void UpdateRatesDisplay()
+        {
+            currentRatesLabel.Text = $"Курсы: {converter.GetCurrentRateInfo("USD", "EUR")} | " +
+                        $"{converter.GetCurrentRateInfo("EUR", "USD")} | " +
+                        $"Обновлено: {rateService.LastUpdate:HH:mm}";
+        }
+
+        private async void RefreshButton_Click(object sender, EventArgs e)
+        {
+            convertButton.Enabled = false;
+            refreshButton.Enabled = false;
+
+            await converter.RefreshRatesAsync();
+            UpdateRatesDisplay();
+
+            convertButton.Enabled = true;
+            refreshButton.Enabled = true;
         }
 
         private void ConvertButton_Click(object sender, EventArgs e)
         {
-            // Проверка: введена ли сумма
             if (string.IsNullOrEmpty(amountTextBox.Text))
             {
                 MessageBox.Show("Введите сумму для конвертации!", "Ошибка",
@@ -24,7 +82,6 @@ namespace WindowsFormsApp1
                 return;
             }
 
-            // Проверка: корректный ли формат числа
             if (!decimal.TryParse(amountTextBox.Text, out decimal amount))
             {
                 MessageBox.Show("Неверный формат суммы! Введите число.", "Ошибка",
@@ -32,11 +89,9 @@ namespace WindowsFormsApp1
                 return;
             }
 
-            // Получение выбранных валют
             string fromCurrency = fromCurrencyComboBox.SelectedItem?.ToString();
             string toCurrency = toCurrencyComboBox.SelectedItem?.ToString();
 
-            // Проверка: выбраны ли валюты
             if (string.IsNullOrEmpty(fromCurrency) || string.IsNullOrEmpty(toCurrency))
             {
                 MessageBox.Show("Выберите валюты для конвертации!", "Ошибка",
@@ -44,7 +99,6 @@ namespace WindowsFormsApp1
                 return;
             }
 
-            // Попытка конвертации
             try
             {
                 decimal result = converter.Convert(amount, fromCurrency, toCurrency);
@@ -65,6 +119,14 @@ namespace WindowsFormsApp1
                 MessageBox.Show($"Непредвиденная ошибка: {ex.Message}", "Ошибка",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            autoUpdateTimer?.Stop();
+            autoUpdateTimer?.Dispose();
+            
+            base.OnFormClosing(e);
         }
     }
 }
